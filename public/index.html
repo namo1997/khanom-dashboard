@@ -72,9 +72,9 @@ body{background:var(--bg);color:var(--cream);font-family:'Sarabun',sans-serif;
 .date-bar{margin:0 16px 20px;background:var(--card);border:1px solid var(--line);
   border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
 .quick-btns{display:flex;gap:6px}
-.qbtn{flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);
+.qbtn{flex:1;padding:7px 2px;border-radius:8px;border:1px solid var(--line);
   background:transparent;color:var(--dim);font-family:'Sarabun',sans-serif;
-  font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+  font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:0}
 .qbtn.active{background:var(--gold);border-color:var(--gold);color:#0E0C09}
 .date-inputs{display:flex;align-items:center;gap:8px}
 .date-sep{font-size:12px;color:var(--muted);flex-shrink:0}
@@ -261,10 +261,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.6) sepia(1)
   <!-- Date Range Bar -->
   <div class="date-bar fu">
     <div class="quick-btns">
-      <button class="qbtn active" data-p="today"  onclick="setPreset('today')">วันนี้</button>
-      <button class="qbtn"        data-p="week"   onclick="setPreset('week')">สัปดาห์</button>
-      <button class="qbtn"        data-p="month"  onclick="setPreset('month')">เดือน</button>
-      <button class="qbtn"        data-p="custom" onclick="focusCustom()">กำหนดเอง</button>
+      <button class="qbtn active" data-p="today"     onclick="setPreset('today')">วันนี้</button>
+      <button class="qbtn"        data-p="yesterday" onclick="setPreset('yesterday')">เมื่อวาน</button>
+      <button class="qbtn"        data-p="week"      onclick="setPreset('week')">สัปดาห์</button>
+      <button class="qbtn"        data-p="month"     onclick="setPreset('month')">เดือน</button>
+      <button class="qbtn"        data-p="custom"    onclick="focusCustom()">กำหนดเอง</button>
     </div>
     <div class="date-inputs">
       <input type="date" id="dateStart" onchange="onDateChange()">
@@ -314,15 +315,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.6) sepia(1)
     <div class="hero-compare">
       <div class="cmp-block">
         <div class="cmp-label">จำนวน เทียบช่วงก่อน</div>
-        <div class="badge-row">
-          <span class="badge flat" id="qtyBadge">—</span>
-        </div>
+        <div class="badge-row" id="qtyBadgeRow"><span class="badge flat">—</span></div>
       </div>
       <div class="cmp-block">
         <div class="cmp-label">มูลค่า เทียบช่วงก่อน</div>
-        <div class="badge-row">
-          <span class="badge flat" id="revBadge">—</span>
-        </div>
+        <div class="badge-row" id="revBadgeRow"><span class="badge flat">—</span></div>
       </div>
     </div>
     <div class="cmp-period" id="cmpPeriod"></div>
@@ -484,6 +481,12 @@ function getRange(preset) {
   const d  = new Date(td + 'T00:00:00');
   switch (preset) {
     case 'today': return { start: td, end: td };
+    case 'yesterday': {
+      const yest = new Date(d);
+      yest.setDate(d.getDate() - 1);
+      const ys = yest.toISOString().split('T')[0];
+      return { start: ys, end: ys };
+    }
     case 'week': {
       const mon = new Date(d);
       mon.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday
@@ -621,9 +624,9 @@ function render(d) {
   $('chipBills').textContent = summary.bills.toLocaleString();
   $('chipRev').textContent   = fmtBaht(summary.revenue);
 
-  // Badges
-  $('qtyBadge').outerHTML = makeBadge(change.qty, change.qtyPct, ' หน่วย');
-  $('revBadge').outerHTML = makeBadge(change.revenue, change.revenuePct, '', true);
+  // Badges (ใช้ innerHTML บน wrapper ป้องกัน id หายเมื่อ re-render)
+  $('qtyBadgeRow').innerHTML = makeBadge(change.qty, change.qtyPct, ' หน่วย');
+  $('revBadgeRow').innerHTML = makeBadge(change.revenue, change.revenuePct, '', true);
 
   // Compare period label
   $('cmpPeriod').textContent = `เทียบกับ ${td(prevStart,true)} – ${td(prevEnd,true)}`;
