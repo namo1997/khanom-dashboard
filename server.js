@@ -16,9 +16,20 @@ const CH = {
 
 // ร้านโซลาว (main shop id)
 const SHOP = process.env.SHOP_ID || '2OJMVIo1Qi81NqYos3oDPoASziy';
+const TZ   = Number(process.env.CH_TZ || 7); // Thai timezone offset
 
 // เมนูขนมถ้วยที่ใช้งานจริง (มีธุรกรรม)
 const BARCODES = `'DS0020','HL0371','SOLAO0022'`;
+
+// ── SQL fragments ที่ใช้ซ้ำ ─────────────────────────────────────────────────
+// วันที่แบบไทย (+7 ชั่วโมง) จาก doc header
+const dateExpr = `toDate(addHours(d.docdatetime, ${TZ}))`;
+// filter หลัก: shop + transflag 44 (ขาย) + ไม่ยกเลิก
+const docBase  = `d.shopid='${SHOP}' AND d.transflag=44 AND d.iscancel=0`;
+// JOIN doc กับ docdetail
+const joinDD   = `JOIN dedebi.docdetail dd ON d.shopid=dd.shopid AND d.docno=dd.docno`;
+// filter barcode ขนมถ้วย
+const bcFilter = `dd.barcode IN(${BARCODES})`;
 const ITEM_META = {
   DS0020:  { label: 'ขนมถ้วย',         unit: 'จาน',  color: '#C8941C' },
   HL0371:  { label: 'ขนมถ้วย (ถ้วย)',  unit: 'ถ้วย', color: '#E6AC30' },
@@ -71,110 +82,125 @@ async function fetchAllData() {
   const now = Date.now();
   if (cache && now - cacheTime < CACHE_TTL) return cache;
 
-  // 1. Latest date with data
+  // 1. หาวันล่าสุดที่มี data (ใช้ today() เพราะข้อมูล real-time จาก dedebi)
   const { d: ld } = await one(
-    `SELECT toDate(max(docdatetime)) as d FROM solao.docdetail WHERE shopid='${SHOP}'`
+    `SELECT toDate(max(addHours(d.docdatetime, ${TZ}))) as d
+     FROM dedebi.doc d
+     WHERE ${docBase}`
   );
 
-  // 2. Previous date (with data)
+  // 2. วันก่อนหน้าที่มี data
   const { d: pd } = await one(
-    `SELECT toDate(max(docdatetime)) as d FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND toDate(docdatetime) < '${ld}'`
+    `SELECT toDate(max(addHours(d.docdatetime, ${TZ}))) as d
+     FROM dedebi.doc d
+     WHERE ${docBase} AND ${dateExpr} < '${ld}'`
   );
 
-  // 3. Khanom bills today / prev
+  // 3. บิลขนมถ้วย วันนี้ / เมื่อวาน (parallel)
   const [tkRow, ttRow, pkRow, ptRow] = await Promise.all([
-    one(`SELECT count(DISTINCT docno) as v FROM solao.docdetail
-         WHERE shopid='${SHOP}' AND barcode IN(${BARCODES}) AND toDate(docdatetime)='${ld}'`),
-    one(`SELECT count(DISTINCT docno) as v FROM solao.docdetail
-         WHERE shopid='${SHOP}' AND toDate(docdatetime)='${ld}'`),
-    one(`SELECT count(DISTINCT docno) as v FROM solao.docdetail
-         WHERE shopid='${SHOP}' AND barcode IN(${BARCODES}) AND toDate(docdatetime)='${pd}'`),
-    one(`SELECT count(DISTINCT docno) as v FROM solao.docdetail
-         WHERE shopid='${SHOP}' AND toDate(docdatetime)='${pd}'`),
+    // บิลขนมถ้วยวันล่าสุด
+    one(`SELECT count(DISTINCT d.docno) as v
+         FROM dedebi.doc d ${joinDD}
+         WHERE ${docBase} AND ${bcFilter} AND ${dateExpr}='${ld}'`),
+    // บิลทั้งหมดวันล่าสุด
+    one(`SELECT count(DISTINCT d.docno) as v
+         FROM dedebi.doc d
+         WHERE ${docBase} AND ${dateExpr}='${ld}'`),
+    // บิลขนมถ้วยวันก่อน
+    one(`SELECT count(DISTINCT d.docno) as v
+         FROM dedebi.doc d ${joinDD}
+         WHERE ${docBase} AND ${bcFilter} AND ${dateExpr}='${pd}'`),
+    // บิลทั้งหมดวันก่อน
+    one(`SELECT count(DISTINCT d.docno) as v
+         FROM dedebi.doc d
+         WHERE ${docBase} AND ${dateExpr}='${pd}'`),
   ]);
 
-  // 4. Total qty consumed today
+  // 4. จำนวน qty ขนมถ้วยวันล่าสุด
   const { qty: rawQty } = await one(
-    `SELECT abs(round(sum(qty), 1)) as qty FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND barcode IN(${BARCODES}) AND toDate(docdatetime)='${ld}'`
+    `SELECT abs(round(sum(dd.qty), 1)) as qty
+     FROM dedebi.doc d ${joinDD}
+     WHERE ${docBase} AND ${bcFilter} AND ${dateExpr}='${ld}'`
   );
 
-  // 5. Per-item breakdown today
+  // 5. แยกรายเมนูวันล่าสุด
   const items = await chQuery(
-    `SELECT barcode, any(itemnames) as name,
-            count(DISTINCT docno) as bills,
-            abs(round(sum(qty), 1)) as qty
-     FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND barcode IN(${BARCODES}) AND toDate(docdatetime)='${ld}'
-     GROUP BY barcode ORDER BY barcode`
+    `SELECT dd.barcode,
+            any(dd.itemname) as name,
+            count(DISTINCT d.docno) as bills,
+            abs(round(sum(dd.qty), 1)) as qty
+     FROM dedebi.doc d ${joinDD}
+     WHERE ${docBase} AND ${bcFilter} AND ${dateExpr}='${ld}'
+     GROUP BY dd.barcode ORDER BY dd.barcode`
   );
 
-  // 6. Per-item breakdown prev day
+  // 6. แยกรายเมนูวันก่อน (สำหรับ % change)
   const prevItems = await chQuery(
-    `SELECT barcode, count(DISTINCT docno) as bills, abs(round(sum(qty), 1)) as qty
-     FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND barcode IN(${BARCODES}) AND toDate(docdatetime)='${pd}'
-     GROUP BY barcode`
+    `SELECT dd.barcode,
+            count(DISTINCT d.docno) as bills,
+            abs(round(sum(dd.qty), 1)) as qty
+     FROM dedebi.doc d ${joinDD}
+     WHERE ${docBase} AND ${bcFilter} AND ${dateExpr}='${pd}'
+     GROUP BY dd.barcode`
   );
   const prevItemMap = Object.fromEntries(prevItems.map(i => [i.barcode, i]));
 
-  // 7. 30-day khanom trend
+  // 7. แนวโน้ม 30 วัน — บิลขนมถ้วย
   const trend30 = await chQuery(
-    `SELECT toDate(docdatetime) as date,
-            count(DISTINCT docno) as khanom,
-            abs(round(sum(qty), 1)) as qty
-     FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND barcode IN(${BARCODES})
-       AND toDate(docdatetime) >= toDate('${ld}') - 29
+    `SELECT ${dateExpr} as date,
+            count(DISTINCT d.docno) as khanom,
+            abs(round(sum(dd.qty), 1)) as qty
+     FROM dedebi.doc d ${joinDD}
+     WHERE ${docBase} AND ${bcFilter}
+       AND ${dateExpr} >= toDate('${ld}') - 29
      GROUP BY date ORDER BY date`
   );
 
-  // 8. 30-day total bills trend (for % overlay)
+  // 8. แนวโน้ม 30 วัน — บิลทั้งหมด (สำหรับ % overlay)
   const total30 = await chQuery(
-    `SELECT toDate(docdatetime) as date, count(DISTINCT docno) as total
-     FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND toDate(docdatetime) >= toDate('${ld}') - 29
+    `SELECT ${dateExpr} as date, count(DISTINCT d.docno) as total
+     FROM dedebi.doc d
+     WHERE ${docBase} AND ${dateExpr} >= toDate('${ld}') - 29
      GROUP BY date ORDER BY date`
   );
   const totalMap = Object.fromEntries(total30.map(r => [r.date, num(r.total)]));
 
-  // 9. Weekday avg (last 90 days)
+  // 9. ค่าเฉลี่ยรายวันในสัปดาห์ (90 วัน)
   const weekday = await chQuery(
     `SELECT dow, round(avg(dc), 1) as avg
      FROM (
-       SELECT toDayOfWeek(toDate(docdatetime)) as dow,
-              toDate(docdatetime) as d,
-              count(DISTINCT docno) as dc
-       FROM solao.docdetail
-       WHERE shopid='${SHOP}' AND barcode IN(${BARCODES})
-         AND toDate(docdatetime) >= toDate('${ld}') - 89
+       SELECT toDayOfWeek(${dateExpr}) as dow,
+              ${dateExpr} as d,
+              count(DISTINCT d.docno) as dc
+       FROM dedebi.doc d ${joinDD}
+       WHERE ${docBase} AND ${bcFilter}
+         AND ${dateExpr} >= toDate('${ld}') - 89
        GROUP BY d, dow
      )
      GROUP BY dow ORDER BY dow`
   );
 
-  // 10. 30-day stats (avg, max, min, best date)
+  // 10. สถิติ 30 วัน (avg, สูงสุด, ต่ำสุด, วันดีสุด/แย่สุด)
   const stats30 = await one(
     `SELECT round(avg(dc), 1) as avg, max(dc) as peak, min(dc) as low,
             argMax(d, dc) as peak_date, argMin(d, dc) as low_date
      FROM (
-       SELECT toDate(docdatetime) as d, count(DISTINCT docno) as dc
-       FROM solao.docdetail
-       WHERE shopid='${SHOP}' AND barcode IN(${BARCODES})
-         AND toDate(docdatetime) >= toDate('${ld}') - 29
+       SELECT ${dateExpr} as d, count(DISTINCT d.docno) as dc
+       FROM dedebi.doc d ${joinDD}
+       WHERE ${docBase} AND ${bcFilter}
+         AND ${dateExpr} >= toDate('${ld}') - 29
        GROUP BY d
      )`
   );
 
-  // 11. Monthly totals (last 6 months)
+  // 11. สรุปรายเดือน (6 เดือน)
   const monthly = await chQuery(
-    `SELECT toStartOfMonth(docdatetime) as month,
-            count(DISTINCT docno) as khanom,
-            abs(round(sum(qty), 1)) as qty
-     FROM solao.docdetail
-     WHERE shopid='${SHOP}' AND barcode IN(${BARCODES})
-       AND toDate(docdatetime) >= toDate('${ld}') - 180
+    `SELECT toStartOfMonth(${dateExpr}) as month,
+            count(DISTINCT d.docno) as khanom,
+            abs(round(sum(dd.qty), 1)) as qty
+     FROM dedebi.doc d ${joinDD}
+     WHERE ${docBase} AND ${bcFilter}
+       AND ${dateExpr} >= toDate('${ld}') - 180
      GROUP BY month ORDER BY month`
   );
 
