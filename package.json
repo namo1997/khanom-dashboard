@@ -1,0 +1,14 @@
+{
+  "name": "khanom-dashboard",
+  "version": "1.0.0",
+  "description": "ขนมถ้วย Sales Dashboard — โซลาว",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

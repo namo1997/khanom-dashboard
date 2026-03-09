@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0E0C09">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ขนมถ้วย · โซลาว</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;600;700;900&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:         #0E0C09;
+  --bg-card:    #181410;
+  --bg-card2:   #1F1A14;
+  --bg-card3:   #26201A;
+  --gold:       #C8941C;
+  --gold-light: #E8B130;
+  --gold-pale:  #F5D48A;
+  --gold-glow:  rgba(200,148,28,.18);
+  --gold-line:  rgba(200,148,28,.14);
+  --cream:      #EDE0CC;
+  --cream-dim:  #B5A28C;
+  --muted:      #6B5E50;
+  --green:      #5BA87C;
+  --green-bg:   rgba(91,168,124,.12);
+  --red:        #C45858;
+  --red-bg:     rgba(196,88,88,.12);
+  --amber:      #E09A2A;
+  --radius:     16px;
+  --radius-sm:  10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'Sarabun', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════════════════════ */
+.wrap {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 0 60px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════════════════════════════════════ */
+#loading {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 20px;
+  z-index: 100;
+  transition: opacity .5s, visibility .5s;
+}
+#loading.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+.loader-ring {
+  width: 52px; height: 52px;
+  border: 3px solid var(--gold-line);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-text {
+  font-family: 'Noto Serif Thai', serif;
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: .08em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ERROR STATE
+═══════════════════════════════════════════════════════════════════════════ */
+#error-state {
+  display: none;
+  padding: 60px 24px;
+  text-align: center;
+}
+#error-state.show { display: block; }
+.error-icon { font-size: 48px; margin-bottom: 16px; }
+.error-msg { color: var(--cream-dim); font-size: 14px; margin-bottom: 20px; }
+.btn-retry {
+  background: var(--gold);
+  color: #0E0C09;
+  border: none;
+  padding: 10px 28px;
+  border-radius: 100px;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════════════════════════ */
+.header {
+  padding: 48px 24px 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.header-brand {}
+.header-icon {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .15em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.header-title {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--cream);
+  line-height: 1.1;
+}
+.header-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+.header-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.btn-refresh {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--bg-card2);
+  border: 1px solid var(--gold-line);
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background .2s, transform .3s;
+}
+.btn-refresh:hover { background: var(--bg-card3); }
+.btn-refresh.spinning svg { animation: spin .6s linear infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATE BADGE
+═══════════════════════════════════════════════════════════════════════════ */
+.date-badge {
+  margin: 0 24px 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.date-pill {
+  background: var(--gold-glow);
+  border: 1px solid var(--gold-line);
+  color: var(--gold-light);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 100px;
+  letter-spacing: .04em;
+}
+.date-dot { width: 4px; height: 4px; background: var(--muted); border-radius: 50%; }
+.date-updated { font-size: 11px; color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION LABEL
+═══════════════════════════════════════════════════════════════════════════ */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 24px;
+  margin-bottom: 12px;
+}
+.section-gap { margin-top: 28px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO CARD
+═══════════════════════════════════════════════════════════════════════════ */
+.hero-card {
+  margin: 0 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-card::after {
+  content: '◈';
+  position: absolute;
+  bottom: -20px; right: 20px;
+  font-size: 120px;
+  color: rgba(200,148,28,.03);
+  font-family: 'Noto Serif Thai', serif;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.hero-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+/* Ring SVG */
+.ring-wrap {
+  flex-shrink: 0;
+  position: relative;
+  width: 96px; height: 96px;
+}
+.ring-svg { transform: rotate(-90deg); }
+.ring-bg  { fill: none; stroke: var(--gold-line); stroke-width: 6; }
+.ring-fg  {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.ring-pct {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--gold-light);
+  line-height: 1;
+}
+.ring-unit { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+/* Hero numbers */
+.hero-nums {}
+.hero-num {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 64px;
+  font-weight: 900;
+  color: var(--gold-light);
+  line-height: .95;
+  letter-spacing: -.02em;
+}
+.hero-unit {
+  font-size: 13px;
+  color: var(--cream-dim);
+  font-weight: 500;
+  margin-top: 4px;
+}
+.hero-from {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.hero-qty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(200,148,28,.1);
+  border: 1px solid var(--gold-line);
+  border-radius: 100px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--gold);
+  margin-top: 8px;
+}
+
+/* Hero comparison row */
+.hero-compare {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gold-line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.change-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.change-badge.up   { background: var(--green-bg); color: var(--green); }
+.change-badge.down { background: var(--red-bg);   color: var(--red); }
+.change-badge.flat { background: var(--bg-card2); color: var(--muted); }
+.change-badge svg  { width: 14px; height: 14px; flex-shrink: 0; }
+.change-label { font-size: 12px; color: var(--muted); }
+
+/* Pct change row */
+.pct-delta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px;
+}
+.pct-label { font-size: 12px; color: var(--muted); }
+.pct-val {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.pct-val.up   { color: var(--green); background: var(--green-bg); }
+.pct-val.down { color: var(--red);   background: var(--red-bg); }
+.pct-val.flat { color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI ROW (mini stats)
+═══════════════════════════════════════════════════════════════════════════ */
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+}
+.kpi-box {
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-sm);
+  padding: 14px 12px;
+  text-align: center;
+}
+.kpi-val {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--cream);
+  line-height: 1;
+}
+.kpi-val.gold { color: var(--gold-light); }
+.kpi-val.green { color: var(--green); }
+.kpi-val.red { color: var(--red); }
+.kpi-label { font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ITEM BREAKDOWN
+═══════════════════════════════════════════════════════════════════════════ */
+.items-list {
+  padding: 0 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.item-card {
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.item-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.item-info { flex: 1; min-width: 0; }
+.item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cream);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-code { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.item-stats {
+  display: flex; align-items: center; gap: 8px;
+  text-align: right;
+}
+.item-bills {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--cream);
+  line-height: 1;
+}
+.item-bills-label { font-size: 9px; color: var(--muted); }
+.item-qty-wrap { text-align: right; }
+.item-qty {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.item-qty-label { font-size: 10px; color: var(--muted); }
+.item-change {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.item-change.up   { color: var(--green); background: var(--green-bg); }
+.item-change.down { color: var(--red);   background: var(--red-bg); }
+.item-change.flat { color: var(--muted); background: var(--bg-card2); }
+
+/* progress bar */
+.item-bar-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold-line);
+}
+.item-bar {
+  height: 100%;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHART CARD (30-day trend)
+═══════════════════════════════════════════════════════════════════════════ */
+.chart-card {
+  margin: 0 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  padding: 20px;
+  overflow: hidden;
+}
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cream-dim);
+}
+.chart-legend {
+  display: flex; gap: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.chart-legend span { display: flex; align-items: center; gap: 4px; }
+.leg-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+}
+.chart-wrap {
+  position: relative;
+  height: 160px;
+  margin-top: 16px;
+}
+.chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.chart-scroll::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEEKDAY HEATMAP
+═══════════════════════════════════════════════════════════════════════════ */
+.weekday-card {
+  margin: 0 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 16px;
+}
+.weekday-col { text-align: center; }
+.weekday-name {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.weekday-bar-wrap {
+  height: 60px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.weekday-bar {
+  width: 28px;
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  transition: height 1s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+.weekday-val {
+  font-size: 10px;
+  color: var(--cream-dim);
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MONTHLY CARD
+═══════════════════════════════════════════════════════════════════════════ */
+.monthly-card {
+  margin: 0 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.monthly-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.monthly-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.monthly-label {
+  font-size: 12px;
+  color: var(--cream-dim);
+  width: 52px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.monthly-bar-bg {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-card3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.monthly-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
+  border-radius: 4px;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.monthly-num {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 700;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS CARD
+═══════════════════════════════════════════════════════════════════════════ */
+.stats-card {
+  margin: 0 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.stat-box {
+  background: var(--bg-card2);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.stat-val {
+  font-family: 'Noto Serif Thai', serif;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+.stat-val.gold  { color: var(--gold-light); }
+.stat-val.green { color: var(--green); }
+.stat-val.red   { color: var(--red); }
+.stat-val.muted { color: var(--cream-dim); }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.stat-date  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════════════════════ */
+.footer {
+  padding: 24px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.footer-dot { margin: 0 6px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════════════════════════════════ */
+.fade-up {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: fadeUp .5s forwards;
+}
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up:nth-child(1)  { animation-delay: .05s; }
+.fade-up:nth-child(2)  { animation-delay: .1s; }
+.fade-up:nth-child(3)  { animation-delay: .15s; }
+.fade-up:nth-child(4)  { animation-delay: .2s; }
+.fade-up:nth-child(5)  { animation-delay: .25s; }
+.fade-up:nth-child(6)  { animation-delay: .3s; }
+.fade-up:nth-child(7)  { animation-delay: .35s; }
+.fade-up:nth-child(8)  { animation-delay: .4s; }
+
+.count-anim { transition: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIVIDER
+═══════════════════════════════════════════════════════════════════════════ */
+.divider {
+  height: 1px;
+  background: var(--gold-line);
+  margin: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OFFLINE BANNER
+═══════════════════════════════════════════════════════════════════════════ */
+.offline-banner {
+  background: var(--red-bg);
+  border-top: 1px solid var(--red);
+  color: var(--red);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: none;
+}
+.offline-banner.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div class="loader-text">กำลังโหลดข้อมูล…</div>
+</div>
+
+<!-- Error state -->
+<div id="error-state">
+  <div class="error-icon">⚠️</div>
+  <div class="error-msg" id="error-msg">ไม่สามารถโหลดข้อมูลได้</div>
+  <button class="btn-retry" onclick="loadData()">ลองใหม่</button>
+</div>
+
+<!-- Main content (hidden until loaded) -->
+<div id="app" class="wrap" style="display:none">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <div class="header fade-up">
+    <div class="header-brand">
+      <div class="header-icon">โซลาว · Dashboard</div>
+      <div class="header-title">ขนมถ้วย</div>
+      <div class="header-sub">ระบบติดตามยอดเมนู</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-refresh" id="btnRefresh" onclick="refresh()" title="รีเฟรชข้อมูล">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Date badge ──────────────────────────────────────────── -->
+  <div class="date-badge fade-up">
+    <div class="date-pill" id="datePill">—</div>
+    <div class="date-dot"></div>
+    <div class="date-updated" id="dateUpdated">อัปเดตล่าสุด —</div>
+  </div>
+
+  <!-- ── Hero card ──────────────────────────────────────────── -->
+  <div class="hero-card fade-up">
+    <div class="hero-row">
+      <!-- Circular ring (% of total) -->
+      <div class="ring-wrap">
+        <svg class="ring-svg" width="96" height="96" viewBox="0 0 96 96">
+          <circle class="ring-bg" cx="48" cy="48" r="40"/>
+          <circle class="ring-fg" id="ringFg" cx="48" cy="48" r="40"
+                  stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="ringPct">0%</div>
+          <div class="ring-unit">ของบิล</div>
+        </div>
+      </div>
+
+      <!-- Numbers -->
+      <div class="hero-nums">
+        <div class="hero-num" id="heroNum">—</div>
+        <div class="hero-unit">บิลวันล่าสุด</div>
+        <div class="hero-from" id="heroFrom">จาก — บิลทั้งหมด</div>
+        <div class="hero-qty-badge" id="heroQty">🍮 — หน่วย</div>
+      </div>
+    </div>
+
+    <!-- Compare with prev day -->
+    <div class="hero-compare">
+      <div class="change-badge flat" id="changeBadge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <polyline points="19 12 12 5 5 12"/>
+        </svg>
+        <span id="changeBillText">—</span>
+      </div>
+      <div>
+        <div class="change-label">เทียบวัน <span id="prevDateLabel">—</span></div>
+        <div class="pct-delta">
+          <div class="pct-label">สัดส่วน</div>
+          <div class="pct-val flat" id="pctDeltaBadge">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── KPI row ─────────────────────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">สถิติ 30 วัน</div>
+  <div class="kpi-row fade-up">
+    <div class="kpi-box">
+      <div class="kpi-val gold" id="kpiAvg">—</div>
+      <div class="kpi-label">เฉลี่ย/วัน</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val green" id="kpiPeak">—</div>
+      <div class="kpi-label">สูงสุด</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpiLow">—</div>
+      <div class="kpi-label">ต่ำสุด</div>
+    </div>
+  </div>
+
+  <!-- ── Item breakdown ─────────────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">เมนูวันล่าสุด</div>
+  <div class="items-list" id="itemsList">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- ── 30-day trend chart ──────────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">แนวโน้ม 30 วัน</div>
+  <div class="chart-card fade-up">
+    <div class="chart-header">
+      <div class="chart-title">จำนวนบิลขนมถ้วย รายวัน</div>
+      <div class="chart-legend">
+        <span><div class="leg-dot" style="background:var(--gold)"></div>บิล</span>
+        <span><div class="leg-dot" style="background:rgba(200,148,28,.25)"></div>% ยอดรวม</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Weekday heatmap ────────────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">ค่าเฉลี่ยรายวันในสัปดาห์ (90 วัน)</div>
+  <div class="weekday-card fade-up">
+    <div class="chart-header">
+      <div class="chart-title">วันไหนขายดีที่สุด?</div>
+    </div>
+    <div class="weekday-grid" id="weekdayGrid"><!-- filled by JS --></div>
+  </div>
+
+  <!-- ── Monthly totals ─────────────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">สรุปรายเดือน (6 เดือน)</div>
+  <div class="monthly-card fade-up">
+    <div class="chart-header">
+      <div class="chart-title">จำนวนบิลแต่ละเดือน</div>
+    </div>
+    <div class="monthly-grid" id="monthlyGrid"><!-- filled by JS --></div>
+  </div>
+
+  <!-- ── Stats: best/worst day ──────────────────────────────── -->
+  <div class="section-gap"></div>
+  <div class="section-label fade-up">วันสำคัญ (30 วัน)</div>
+  <div class="stats-card fade-up">
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-val green" id="statPeak">—</div>
+        <div class="stat-label">วันที่ขายดีสุด</div>
+        <div class="stat-date" id="statPeakDate">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val muted" id="statLow">—</div>
+        <div class="stat-label">วันที่ขายน้อยสุด</div>
+        <div class="stat-date" id="statLowDate">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <div class="footer fade-up">
+    <span>ขนมถ้วย Dashboard</span>
+    <span class="footer-dot">·</span>
+    <span>Read-only</span>
+    <span class="footer-dot">·</span>
+    <span id="footerRefreshIn">รีเฟรชใน 5:00</span>
+  </div>
+</div>
+
+<div class="offline-banner" id="offlineBanner">⚠️ ไม่มีการเชื่อมต่ออินเทอร์เน็ต</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                     'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                           'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THAI_DAYS = ['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'];
+const THAI_DAYS_FULL = ['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
+
+function thaiDate(str, short = false) {
+  if (!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  const y = (d.getFullYear() + 543).toString().slice(-2);
+  const m = short ? THAI_MONTHS[d.getMonth()] : THAI_MONTHS_FULL[d.getMonth()];
+  return `${d.getDate()} ${m} ${y}`;
+}
+
+function thaiMonth(str) {
+  if (!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  return `${THAI_MONTHS[d.getMonth()]} ${(d.getFullYear()+543).toString().slice(-2)}`;
+}
+
+function timeAgo(isoStr) {
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+  if (diff < 60)  return `${diff} วินาที`;
+  if (diff < 3600) return `${Math.floor(diff/60)} นาที`;
+  return `${Math.floor(diff/3600)} ชั่วโมง`;
+}
+
+/* CountUp animation */
+function countUp(el, target, duration = 900, decimals = 0) {
+  const start = parseFloat(el.textContent.replace(/,/g,'')) || 0;
+  const diff  = target - start;
+  if (diff === 0) return;
+  const startTime = performance.now();
+  const step = (now) => {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const val = start + diff * ease;
+    el.textContent = decimals > 0
+      ? val.toFixed(decimals)
+      : Math.round(val).toLocaleString();
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* Ring animation */
+function setRing(pct) {
+  const C = 2 * Math.PI * 40; // 251.2
+  const offset = C * (1 - Math.min(pct, 100) / 100);
+  $('ringFg').style.strokeDashoffset = offset;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CHART INSTANCE
+══════════════════════════════════════════════════════════ */
+let trendChartInst = null;
+
+function buildTrendChart(trend) {
+  const ctx = $('trendChart').getContext('2d');
+  const labels = trend.map(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]}`;
+  });
+  const khData  = trend.map(r => r.khanom);
+  const pctData = trend.map(r => r.pct);
+
+  if (trendChartInst) trendChartInst.destroy();
+
+  trendChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'บิล',
+          data: khData,
+          backgroundColor: 'rgba(200,148,28,.75)',
+          borderColor: '#C8941C',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+          order: 2,
+        },
+        {
+          label: '% ยอดรวม',
+          data: pctData,
+          type: 'line',
+          borderColor: 'rgba(200,148,28,.3)',
+          backgroundColor: 'rgba(200,148,28,.05)',
+          fill: true,
+          tension: .4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 1.5,
+          yAxisID: 'y1',
+          order: 1,
+        }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1F1A14',
+          borderColor: 'rgba(200,148,28,.3)',
+          borderWidth: 1,
+          titleColor: '#C8941C',
+          bodyColor: '#B5A28C',
+          titleFont: { family: 'Sarabun', weight: '600' },
+          bodyFont: { family: 'Sarabun' },
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.dataset.label === 'บิล') return ` ${ctx.raw} บิล`;
+              return ` ${ctx.raw}% ของยอดรวม`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#6B5E50',
+            font: { family: 'Sarabun', size: 9 },
+            maxRotation: 0,
+            maxTicksLimit: 10,
+          },
+          grid: { color: 'rgba(200,148,28,.05)' },
+        },
+        y: {
+          position: 'left',
+          ticks: {
+            color: '#C8941C',
+            font: { family: 'Sarabun', size: 9 },
+            stepSize: 2,
+          },
+          grid: { color: 'rgba(200,148,28,.05)' },
+          title: { display: false },
+        },
+        y1: {
+          position: 'right',
+          ticks: {
+            color: '#6B5E50',
+            font: { family: 'Sarabun', size: 9 },
+            callback: v => v + '%',
+          },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER FUNCTIONS
+══════════════════════════════════════════════════════════ */
+function renderHero(data) {
+  const { today, prev, change, latestDate, prevDate } = data;
+
+  // Date badges
+  $('datePill').textContent = `ข้อมูล ณ ${thaiDate(latestDate, true)}`;
+  $('dateUpdated').textContent = `โหลดเมื่อ ${timeAgo(data.fetchedAt)} ที่แล้ว`;
+  $('prevDateLabel').textContent = thaiDate(prevDate, true);
+
+  // Hero number (animate)
+  countUp($('heroNum'), today.khanomBills);
+  $('heroFrom').textContent = `จาก ${today.totalBills.toLocaleString()} บิลทั้งหมด`;
+  $('heroQty').textContent = `🍮 ${today.qty} หน่วย`;
+
+  // Ring
+  setTimeout(() => setRing(today.pct), 100);
+  $('ringPct').textContent = today.pct + '%';
+
+  // Change badge
+  const badge = $('changeBadge');
+  const bills = change.bills;
+  badge.className = 'change-badge ' + (bills > 0 ? 'up' : bills < 0 ? 'down' : 'flat');
+  const arrowUp   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+  const arrowDown = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
+  const arrowFlat = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const arrow = bills > 0 ? arrowUp : bills < 0 ? arrowDown : arrowFlat;
+  const pct   = change.billsPct !== null ? `(${change.billsPct > 0 ? '+' : ''}${change.billsPct}%)` : '';
+  badge.innerHTML = arrow + `<span>${bills > 0 ? '+' : ''}${bills} บิล ${pct}</span>`;
+
+  // Pct delta
+  const d = $('pctDeltaBadge');
+  d.className = 'pct-val ' + (change.pctDelta > 0 ? 'up' : change.pctDelta < 0 ? 'down' : 'flat');
+  d.textContent = (change.pctDelta > 0 ? '+' : '') + change.pctDelta + 'pp';
+}
+
+function renderKPI(stats) {
+  $('kpiAvg').textContent  = stats.avg;
+  $('kpiPeak').textContent = stats.peak;
+  $('kpiLow').textContent  = stats.low;
+}
+
+function renderItems(items) {
+  const maxBills = Math.max(...items.map(i => i.bills), 1);
+  const list = $('itemsList');
+  list.innerHTML = items.map((item, idx) => {
+    const pct = ((item.bills / maxBills) * 100).toFixed(0);
+    const chDir = item.change > 0 ? 'up' : item.change < 0 ? 'down' : 'flat';
+    const chText = item.changePct !== null
+      ? (item.change > 0 ? '+' : '') + item.changePct + '%'
+      : '—';
+    return `
+    <div class="item-card fade-up" style="animation-delay:${.05 * idx}s">
+      <div class="item-dot" style="background:${item.meta.color}"></div>
+      <div class="item-info">
+        <div class="item-name">${item.meta.label}</div>
+        <div class="item-code">${item.barcode}</div>
+      </div>
+      <div class="item-stats">
+        <div class="item-qty-wrap">
+          <div class="item-qty">${item.qty}</div>
+          <div class="item-qty-label">${item.meta.unit}</div>
+        </div>
+        <div>
+          <div class="item-bills">${item.bills}</div>
+          <div class="item-bills-label">บิล</div>
+        </div>
+        <span class="item-change ${chDir}">${chText}</span>
+      </div>
+      <div class="item-bar-wrap">
+        <div class="item-bar" style="width:${pct}%;background:${item.meta.color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderWeekday(weekday) {
+  // ClickHouse: toDayOfWeek → 1=Mon ... 7=Sun
+  const DATA_MAP = Object.fromEntries(weekday.map(r => [r.dow, r.avg]));
+  const vals = [1,2,3,4,5,6,7].map(d => DATA_MAP[d] || 0);
+  const maxVal = Math.max(...vals, 1);
+  const grid = $('weekdayGrid');
+  grid.innerHTML = [1,2,3,4,5,6,7].map((dow, i) => {
+    const val = DATA_MAP[dow] || 0;
+    const h   = Math.max(4, Math.round((val / maxVal) * 56));
+    const isTop = val === maxVal;
+    const color = isTop ? 'var(--gold)' : 'var(--bg-card3)';
+    const border = isTop ? '1px solid var(--gold-line)' : 'none';
+    return `
+    <div class="weekday-col">
+      <div class="weekday-name">${THAI_DAYS[i]}</div>
+      <div class="weekday-bar-wrap">
+        <div class="weekday-bar"
+             style="height:${h}px;background:${color};border:${border};"
+             title="${THAI_DAYS_FULL[i]}: ${val} บิล/วัน">
+        </div>
+      </div>
+      <div class="weekday-val">${val}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMonthly(monthly) {
+  const maxVal = Math.max(...monthly.map(m => m.khanom), 1);
+  const grid = $('monthlyGrid');
+  grid.innerHTML = monthly.map(m => {
+    const w = ((m.khanom / maxVal) * 100).toFixed(0);
+    return `
+    <div class="monthly-row">
+      <div class="monthly-label">${thaiMonth(m.month)}</div>
+      <div class="monthly-bar-bg">
+        <div class="monthly-bar-fill" style="width:${w}%"></div>
+      </div>
+      <div class="monthly-num">${m.khanom}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStats(stats30) {
+  $('statPeak').textContent     = stats30.peak + ' บิล';
+  $('statPeakDate').textContent = thaiDate(stats30.peakDate, true);
+  $('statLow').textContent      = stats30.low + ' บิล';
+  $('statLowDate').textContent  = thaiDate(stats30.lowDate, true);
+}
+
+/* ══════════════════════════════════════════════════════════
+   DATA LOADING
+══════════════════════════════════════════════════════════ */
+let lastData = null;
+
+async function loadData() {
+  $('loading').classList.remove('hide');
+  $('error-state').classList.remove('show');
+  $('app').style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/data');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    lastData = data;
+
+    renderHero(data);
+    renderKPI(data.stats30);
+    renderItems(data.today.items);
+    buildTrendChart(data.trend);
+    renderWeekday(data.weekday);
+    renderMonthly(data.monthly);
+    renderStats(data.stats30);
+
+    $('loading').classList.add('hide');
+    $('app').style.display = 'block';
+    startCountdown();
+  } catch (err) {
+    $('loading').classList.add('hide');
+    $('error-state').classList.add('show');
+    $('error-msg').textContent = err.message || 'ไม่สามารถโหลดข้อมูลได้';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   REFRESH + COUNTDOWN
+══════════════════════════════════════════════════════════ */
+let countdownTimer = null;
+let remaining = 300; // 5 min
+
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  remaining = 300;
+  countdownTimer = setInterval(() => {
+    remaining--;
+    const m = Math.floor(remaining / 60).toString().padStart(1,'0');
+    const s = (remaining % 60).toString().padStart(2,'0');
+    $('footerRefreshIn').textContent = `รีเฟรชใน ${m}:${s}`;
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      refresh();
+    }
+  }, 1000);
+}
+
+async function refresh() {
+  const btn = $('btnRefresh');
+  btn.classList.add('spinning');
+  try {
+    await fetch('/api/refresh');
+    await loadData();
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   OFFLINE DETECTION
+══════════════════════════════════════════════════════════ */
+window.addEventListener('offline', () => $('offlineBanner').classList.add('show'));
+window.addEventListener('online',  () => $('offlineBanner').classList.remove('show'));
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+loadData();
+</script>
+</body>
+</html>
