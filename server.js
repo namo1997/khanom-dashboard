@@ -312,6 +312,48 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── GET /api/pending — ออเดอร์รอเช็คบิล (real-time cartorder) ────────────
+  if (url.pathname === '/api/pending') {
+    try {
+      const rows = await chQuery(`
+        SELECT cd.barcode,
+               any(cd.name) as name,
+               count(DISTINCT cd.cartnumber) as carts,
+               abs(round(sum(cd.qty), 1)) as qty,
+               round(sum(cd.totalamount), 2) as amount,
+               toString(min(addHours(cd.createdatetime, ${TZ}))) as earliest
+        FROM dedebi.cartorder co
+        JOIN dedebi.cartorderdetail cd
+          ON co.shopid = cd.shopid AND co.cartnumber = cd.cartnumber
+        WHERE co.shopid = '${SHOP}'
+          AND cd.barcode IN(${BARCODES})
+        GROUP BY cd.barcode
+      `);
+      const items = rows.map(r => ({
+        barcode: r.barcode,
+        name: ITEM_META[r.barcode]?.label || r.name,
+        carts: num(r.carts),
+        qty:   flt(r.qty),
+        amount: flt(r.amount),
+        earliest: r.earliest,
+        meta: ITEM_META[r.barcode] || {},
+      }));
+      const totalQty    = items.reduce((a, i) => a + i.qty, 0);
+      const totalCarts  = Math.max(...items.map(i => i.carts), 0);
+      const totalAmount = items.reduce((a, i) => a + i.amount, 0);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({
+        fetchedAt: new Date().toISOString(),
+        items,
+        total: { qty: +totalQty.toFixed(1), carts: totalCarts, amount: +totalAmount.toFixed(2) },
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // ── GET /api/refresh — ล้าง cache ─────────────────────────────────────────
   if (url.pathname === '/api/refresh') {
     Object.keys(cacheStore).forEach(k => delete cacheStore[k]);

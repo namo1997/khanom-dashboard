@@ -84,6 +84,37 @@ input[type="date"]{flex:1;background:var(--card2);border:1px solid var(--line);b
 input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.6) sepia(1) saturate(2) hue-rotate(10deg);cursor:pointer}
 .compare-label{font-size:10px;color:var(--muted);text-align:right}
 
+/* ═══════════ PENDING CARD ═══════════════════════════════════════════════════ */
+.pending-card{margin:0 16px 20px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.pending-card.has-data{border-color:rgba(91,168,124,.4);background:rgba(91,168,124,.05)}
+.pending-card.has-data .pending-title{color:var(--green)}
+.pending-head{display:flex;align-items:center;gap:8px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.live-dot.active{background:var(--green);box-shadow:0 0 0 0 rgba(91,168,124,.6);
+  animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(91,168,124,.6)}70%{box-shadow:0 0 0 7px rgba(91,168,124,0)}100%{box-shadow:0 0 0 0 rgba(91,168,124,0)}}
+.pending-title{font-size:12px;font-weight:700;color:var(--muted);flex:1;letter-spacing:.04em}
+.pending-time{font-size:10px;color:var(--muted)}
+/* empty state */
+.pending-empty{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:2px 0}
+/* summary row */
+.pending-summary{display:flex;align-items:center;gap:12px}
+.pending-big{font-family:'Noto Serif Thai',serif;font-size:28px;font-weight:900;color:var(--green);line-height:1}
+.pending-unit{font-size:11px;color:var(--muted);margin-top:2px}
+.pending-meta{display:flex;flex-direction:column;gap:3px}
+.pending-chip{display:inline-flex;align-items:center;gap:4px;background:var(--card2);
+  border:1px solid var(--line);border-radius:100px;padding:3px 10px;font-size:11px;color:var(--dim)}
+.pending-chip-val{color:var(--cream);font-weight:700}
+/* items row */
+.pending-items{display:flex;gap:8px}
+.pi-box{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;text-align:center}
+.pi-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-bottom:4px}
+.pi-name{font-size:9px;color:var(--muted);margin-bottom:4px;line-height:1.2}
+.pi-qty{font-family:'Noto Serif Thai',serif;font-size:18px;font-weight:900;color:var(--green);line-height:1}
+.pi-unit{font-size:8px;color:var(--muted);margin-top:2px}
+
 /* ═══════════ HERO CARD ══════════════════════════════════════════════════════ */
 .hero{margin:0 16px;background:var(--card);border:1px solid var(--line);
   border-radius:18px;padding:24px 20px 20px;position:relative;overflow:hidden}
@@ -273,6 +304,18 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.6) sepia(1)
       <input type="date" id="dateEnd" onchange="onDateChange()">
     </div>
     <div class="compare-label" id="compareLabel">เทียบกับช่วงก่อนหน้า</div>
+  </div>
+
+  <!-- Pending Orders (Real-time) -->
+  <div class="pending-card fu" id="pendingCard">
+    <div class="pending-head">
+      <div class="live-dot" id="pendingDot"></div>
+      <div class="pending-title">ออเดอร์รอเช็คบิล</div>
+      <div class="pending-time" id="pendingTime">กำลังโหลด…</div>
+    </div>
+    <div id="pendingBody">
+      <div class="pending-empty"><span>⏳</span><span>กำลังตรวจสอบ…</span></div>
+    </div>
   </div>
 
   <!-- Hero -->
@@ -465,6 +508,75 @@ function countUp(el, target, dur=800, dec=0) {
     if (p < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+/* ══ PENDING ORDERS (Real-time) ════════════════════════════════════════════ */
+let pendingTimer = null;
+
+function renderPending(d) {
+  const card = $('pendingCard');
+  const dot  = $('pendingDot');
+  const body = $('pendingBody');
+  const time = $('pendingTime');
+
+  // timestamp
+  const now = new Date(d.fetchedAt);
+  time.textContent = `อัปเดต ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} น.`;
+
+  if (!d.items || d.items.length === 0 || d.total.qty === 0) {
+    card.classList.remove('has-data');
+    dot.classList.remove('active');
+    body.innerHTML = `<div class="pending-empty"><span>✅</span><span>ไม่มีออเดอร์ค้างอยู่</span></div>`;
+    return;
+  }
+
+  card.classList.add('has-data');
+  dot.classList.add('active');
+
+  // ส่วนสรุป
+  const summaryHtml = `
+    <div class="pending-summary">
+      <div>
+        <div class="pending-big">${d.total.qty}</div>
+        <div class="pending-unit">หน่วยรอขาย</div>
+      </div>
+      <div class="pending-meta">
+        <div class="pending-chip">🧾 <span class="pending-chip-val">${d.total.carts}</span> ออเดอร์</div>
+        <div class="pending-chip">💰 <span class="pending-chip-val">฿${fmtBaht(d.total.amount)}</span></div>
+      </div>
+    </div>`;
+
+  // แยกรายเมนู
+  const itemsHtml = `
+    <div class="pending-items">
+      ${d.items.map(item => `
+        <div class="pi-box">
+          <div><span class="pi-dot" style="background:${item.meta.color||'var(--gold)'}"></span></div>
+          <div class="pi-name">${item.name}</div>
+          <div class="pi-qty">${item.qty}</div>
+          <div class="pi-unit">${item.meta.unit||'หน่วย'} · ${item.carts} ออเดอร์</div>
+        </div>`).join('')}
+    </div>`;
+
+  body.innerHTML = summaryHtml + itemsHtml;
+}
+
+async function loadPending() {
+  try {
+    const res  = await fetch('/api/pending');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderPending(data);
+  } catch (e) {
+    $('pendingTime').textContent = 'ไม่สามารถโหลดได้';
+  }
+}
+
+function startPendingPoll() {
+  loadPending();
+  if (pendingTimer) clearInterval(pendingTimer);
+  pendingTimer = setInterval(loadPending, 60_000); // รีเฟรชทุก 1 นาที
 }
 
 /* ══ DATE RANGE ════════════════════════════════════════════════════════════ */
@@ -830,6 +942,7 @@ window.addEventListener('online',  () => $('offlineBanner').classList.remove('sh
     $('dateEnd').max     = ld;
   } catch {}
   setPreset('today');
+  startPendingPoll();
 })();
 </script>
 </body>
